@@ -6,13 +6,53 @@ if (@ARGV == 0) {
 	die("Usage:\n\tvideo list\n\tvideo rip 'format' 'DVD title [and chapter]' 'title'\n\tvideo play 'STRING' [episode number]");
 }
 
+$configFile=$ENV{"HOME"} . "/.mplayer-library/config";
+my $libraryBaseDir = "/";
+my $indexFile = "";
+
+
+open(CONFIG, $configFile) or die("Could not open config file at: $configFile");
+
+@config = <CONFIG>;
+
+close(CONFIG);
+
+foreach $con (@config) {
+    chomp($con);
+    if ($con =~ m/libraryBaseDir=*/) {
+	@parts = split(/=/, $con);
+	$libraryBaseDir = $parts[1] . '/';
+	#print("[Config] found library base directory at $libraryBaseDir\n");
+    } elsif ($con =~ m/indexFile=/) {
+	@parts = split(/=/, $con);
+	$indexFile = $parts[1];
+	#print("[Config] found index file at $indexFile\n");
+    }
+}
+
+@mplayerCommand=(
+        'mplayer',
+	'-vo',
+	'gl',
+	'-ao',
+	'pulse',
+	'-vf',
+	'pp=lb',
+	'-framedrop',
+	'-alang',
+	'en',
+	'-slang',
+	'en',
+	'-forcedsubsonly',
+	'-fs',
+	'-fixed-vo'
+);
+
 $method = $ARGV[0];
 
 if ($method eq "list") {
 
-	$indexfile = "index";
-	
-	open(INDEX, $indexfile) or die("Unable to open index\n");
+	open(INDEX, $indexFile) or die("Unable to open index\n");
 	
 	@index = <INDEX>;
 	
@@ -54,10 +94,8 @@ if ($method eq "list") {
 } elsif ($method eq "play") {
 	
 	$playname = $ARGV[1];
-
-	$indexfile = "index";
 	
-	open(INDEX, $indexfile) or die("Unable to open index\n");
+	open(INDEX, $indexFile) or die("Unable to open index\n");
 	
 	@index = <INDEX>;
 	
@@ -83,32 +121,36 @@ if ($method eq "list") {
 			if ($name eq $playname) {
 				switch ($mode) {
 					case "movie" {
-						system("mplayer", "-fs", @options, $filename);
+					    print(@mplayerCommand);
+						system(@mplayerCommand, @options, $libraryBaseDir . $filename);
 						break;
 					}
 					case "multimovie" {
 						@filenames = split(/,/, $filename);
-						system("mplayer", "-fs", @options, @filenames);
+						for($i=0; $i < @filenames; $i++) {
+						    $filenames[$i] = $libraryBaseDir . $filenames[$i];
+				                }
+						system(@mplayerCommand, @options, @filenames);
 						break;
 					}
 					case "series" {
 						$episode = $ARGV[2];
 						@filenameparts = split(/,/, $filename);
-						$folder = $filenameparts[0];
+						$folder = $libraryBaseFir . $filenameparts[0];
 						$maxepisode = $filenameparts[1];
 						$ext = $filenameparts[2];
 						
 						if ($episode eq "all") {
 							for ($i = 1; $i <= $maxepisode; $i++) {
-								push(@filename,"$folder/$i.$ext");
+								push(@filename, $libraryBaseDir . "$folder/$i.$ext");
 							}
 						} elsif ($episode > 0 && $episode <= $maxepisode) {
-							@filename = "$folder/$episode.$ext";
+							@filename = $libraryBaseDir . "$folder/$episode.$ext";
 						} else {
 							die("ERROR: Episode out of Range\n");
 						}
 						
-						system("mplayer", "-fs", @options, @filename);
+						system(@mplayerCommand, @options, @filename);
 						break;
 					}
 				}
@@ -121,7 +163,7 @@ if ($method eq "list") {
 	
 	$title = $ARGV[1];
 
-	system("mplayer", "-fs", "-alang", "en", "-slang", "en", "-forcedsubsonly", "DVD://$title");
+	system(@mplayerCommand, "DVD://$title");
 } else {
 	die("ERROR: Did not recognise method\n");
 }
