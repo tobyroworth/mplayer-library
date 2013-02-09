@@ -2,8 +2,12 @@
 
 use Switch;
 
-if (@ARGV == 0) {
-    die("Usage:\n\tvideo list\n\tvideo rip 'format' 'title'\n\tvideo dvd title [and chapter]'\n\tvideo play 'STRING' [episode number]");
+if (@ARGV == 0 || $ARGV[0] eq '--help' || $ARGV[0] eq '-h' || $ARGV[0] eq '--usage') {
+    die("Usage:\n" . 
+	"\tvideo list\n" .
+	"\tvideo rip 'format' 'title'\n" .
+	"\tvideo dvd [?|title [and chapter]]'\n" .
+	"\tvideo play 'STRING' [episode number]");
 }
 
 $configFile=$ENV{"HOME"} . "/.mplayer-library/config";
@@ -189,35 +193,50 @@ if ($method eq "list") {
 	    $numEpisodes++;
 	}
     }
-
-    if ($numEpisodes >= $episodeMinCount) {
-	#this is probably a series
-	@candidates = sort{$a <=> $b} @candidates[0..$numEpisodes-1];
-	if ($title eq "") {
-	    print("Found $numEpisodes episodes:\n");
-	    foreach $candidate (@candidates) {
-		print("\tTitle $candidate\n");
-	    }
-	    print("Select one to play: ");
-	    $episode = <STDIN>;
-	    $episode = chomp($episode);
-	    
-	    if (grep(/$episode/, @candidates)) {
-		$title = $episode;
-	    } else {
-		print("Not recognised - playing first episode\n");
-		$title = $candidates[0];
-	    }
+    if ($title = '?') {
+	print("Available titles:\n");
+	foreach $candidate (reverse @candidates) {
+	    print("\tTitle $candidate: " . sprintf("%.2f", $lengths{$candidate} / 60) . " minutes\n");
+	}
+	print("Select a title: ");
+	$chosenTitle = <STDIN>;
+	chomp($chosenTitle);
+	if (grep(/$chosenTitle/, @candidates)) {
+	    $title = $chosenTitle;
+	} else {
+	    print("Not recognised: playing longest title\n");
+	    $title = $candidates[0];
 	}
     } else {
-	if ($title eq "") {
-	    $title = $candidates[0];
-	    print("Playing title: $title\n\tSuggest trying title $candidates[1] next\n");
-	} 
+	if ($numEpisodes >= $episodeMinCount) {
+	    #this is probably a series
+	    @candidates = sort{$a <=> $b} @candidates[0..$numEpisodes-1];
+	    if ($title eq "") {
+		print("Found $numEpisodes episodes:\n");
+		foreach $candidate (@candidates) {
+		    print("\tTitle $candidate\n");
+		}
+		print("Select one to play: ");
+		$episode = <STDIN>;
+		chomp($episode);
+		
+		if (grep(/$episode/, @candidates)) {
+		    $title = $episode;
+		} else {
+		    print("Not recognised - playing first episode\n");
+		    $title = $candidates[0];
+		}
+	    }
+	} else {
+	    if ($title eq "") {
+		$title = $candidates[0];
+		print("Playing title: $title\n\tSuggest trying title $candidates[1] next\n");
+	    } 
+	}
     }
 
     system(@mplayerCommand, "DVD://$title");
-        
+    
 } else {
     die("ERROR: Did not recognise method\n");
 }
