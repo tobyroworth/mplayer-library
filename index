@@ -1,0 +1,5 @@
+#[title]	[type]	[filename]	[mplayer_options]
+#[title]	movie	[filename]	[mplayer_options]
+#[title]	series	[folder,maxnum,ext]	[mplayer_options]
+#[title]	multimovie	[filename1,filename2,...]	[mplayer_options]
+
