@@ -193,7 +193,7 @@ if ($method eq "list") {
 	    $numEpisodes++;
 	}
     }
-    if ($title = '?') {
+    if ($title eq '?') {
 	print("Available titles:\n");
 	foreach $candidate (reverse @candidates) {
 	    print("\tTitle $candidate: " . sprintf("%.2f", $lengths{$candidate} / 60) . " minutes\n");
